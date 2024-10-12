@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyLambda", "src\MyLambda\MyLambda.csproj", "{7690996D-CEFE-435D-8AE1-A4C4B71BC265}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4BF174D3-7C10-4194-8498-0449A85CC482}"
+	ProjectSection(SolutionItems) = preProject
+		client.html = client.html
+		template.yaml = template.yaml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7690996D-CEFE-435D-8AE1-A4C4B71BC265}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7690996D-CEFE-435D-8AE1-A4C4B71BC265}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7690996D-CEFE-435D-8AE1-A4C4B71BC265}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7690996D-CEFE-435D-8AE1-A4C4B71BC265}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1A168FDF-D84B-4AD0-A110-CB68B9D630BD}
+	EndGlobalSection
+EndGlobal

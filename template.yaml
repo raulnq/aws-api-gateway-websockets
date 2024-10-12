@@ -1,0 +1,184 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM
+
+Resources:
+  ConnectionsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: connectionid
+        Type: String
+      TableName: connections
+
+  ChatApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: MyChatApp
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  ConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 60
+      MemorySize: 512
+      Tracing: Active
+      Runtime: dotnet8
+      Architectures:
+        - x86_64    
+      Handler: MyLambda::MyLambda.Function::Connect
+      CodeUri: ./src/MyLambda/
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:PutItem'
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConnectionsTable}'
+
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChatApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      OperationName: Connect Route
+      Target: !Sub "integrations/${ConnectIntegration}"
+
+  ConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChatApi
+      Description: Connect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConnectFunction.Arn}/invocations"
+
+  ConnectFunctionPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - ChatApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ConnectFunction
+      Principal: apigateway.amazonaws.com
+
+  DisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 60
+      MemorySize: 512
+      Tracing: Active
+      Runtime: dotnet8
+      Architectures:
+        - x86_64    
+      Handler: MyLambda::MyLambda.Function::Disconnect
+      CodeUri: ./src/MyLambda/
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:DeleteItem'
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConnectionsTable}'
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChatApi
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      OperationName: Disconnect Route
+      Target: !Sub "integrations/${DisconnectIntegration}"
+
+  DisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChatApi
+      Description: Disconnect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DisconnectFunction.Arn}/invocations"
+
+  DisconnectFunctionPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - ChatApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DisconnectFunction
+      Principal: apigateway.amazonaws.com
+
+  SendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 60
+      MemorySize: 512
+      Tracing: Active
+      Runtime: dotnet8
+      Architectures:
+        - x86_64    
+      Handler: MyLambda::MyLambda.Function::Send
+      CodeUri: ./src/MyLambda/
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:Scan'
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConnectionsTable}'
+          - Effect: Allow
+            Action:
+              - 'execute-api:ManageConnections'
+            Resource:
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ChatApi}/*'
+
+  SendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ChatApi
+      RouteKey: send
+      AuthorizationType: NONE
+      OperationName: Send Route
+      Target: !Sub "integrations/${SendIntegration}"
+
+  SendIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ChatApi
+      Description: Send Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SendFunction.Arn}/invocations"
+
+  SendFunctionPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - ChatApi
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SendFunction
+      Principal: apigateway.amazonaws.com
+
+  Deployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+    - ConnectRoute
+    - DisconnectRoute
+    - SendRoute
+    Properties:
+      ApiId: !Ref ChatApi
+
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: prod
+      Description: prod stage
+      DeploymentId: !Ref Deployment
+      ApiId: !Ref ChatApi
+      AutoDeploy: true
+
+Outputs:
+
+  WebSocketURI:
+    Description: "The WSS protocol URI to connect to"
+    Value: !Sub wss://${ChatApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}
